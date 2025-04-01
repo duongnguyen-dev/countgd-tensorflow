@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools >= 78.0.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "countgd-tensorflow"
+version = "0.1.0"
+authors = [
+    {name = "Nguyen Hai Duong", email="duongng2911@gmail.com"},
+]
+dependencies = [
+    "tensorflow>2.17.0,<=2.18.0",
+    "tf-keras>2.17.0,<=2.18.0",
+    "tensorflow-metal==1.2.0",
+    "tensorflow-hub==0.16.1",
+    "tensorflow-text>2.17.0,<=2.18.0",
+    "opencv-python==4.11.0.86",
+    "matplotlib==3.10.1",
+    "pytest==8.3.5"
+]
+description = "Implementation of CountGD using TensorFlow"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "Apache-2.0"
+license-files = ["LICEN[CS]E*"]
+
+[project.urls] 
+Repository = "https://github.com/duongnguyen-dev/countgd-tensorflow"
+"Bug Tracker" = "https://github.com/duongnguyen-dev/countgd-tensorflow/issues"
