@@ -1,8 +1,10 @@
 class SwintBConfig:
-    WINDOW_SIZE=4
+    WINDOW_SIZE = 4
+    PROJECTION_DIM = 96
 
 class BertConfig:
     pass
 
 class CountGDConfig: 
-    pass
+    H=224
+    W=224
