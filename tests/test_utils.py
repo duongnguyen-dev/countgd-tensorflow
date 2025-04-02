@@ -1,4 +1,4 @@
-from countgd.utils import create_swintransformer
+from countgd.utils import create_swintransformerB
 
-model = create_swintransformer()
+model = create_swintransformerB()
 print(model.summary())

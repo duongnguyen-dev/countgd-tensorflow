@@ -10,7 +10,7 @@ def test_patch_merging():
     part = PatchParition(4)
     arr = tf.zeros((1, 224, 224, 3))
     patches = part(arr)
-    channels = 96
+    channels = 128
     num_patch_x = 224 // 4
     num_patch_y = 224 // 4
-    assert patch_merging(patches, (num_patch_x, num_patch_y), channels).numpy().tolist() == [1, 784, 192]
+    assert patch_merging(patches, (num_patch_x, num_patch_y), channels).numpy().tolist() == [1, 784, 256]

@@ -14,7 +14,7 @@ class SwinTransformerBlock(tf.keras.layers.Layer):
         dim, 
         input_resolution, 
         num_heads, 
-        window_size=7,
+        window_size=4,
         shift_size=0,
         mlp_ratio=4.,
         qkv_bias=True,
@@ -67,6 +67,7 @@ class SwinTransformerBlock(tf.keras.layers.Layer):
                     cnt += 1
             
             img_mask = tf.constant(img_mask)
+            print(img_mask.shape)
             mask_windows = window_partition(img_mask, self.window_size)
             mask_windows = tf.reshape(mask_windows, [-1, self.window_size*self.window_size])
             attn_mask = mask_windows[:, None, :] - mask_windows[:, :, None]
@@ -75,8 +76,8 @@ class SwinTransformerBlock(tf.keras.layers.Layer):
             self.attn_mask = None
     
     def call(self, x):
-        H, W = self.input_resolution
-        B, L, C = x.shape
+        H, W = self.input_resolution # 56 x 56
+        B, L, C = x.shape # Linear embedding output shape
         assert L == H * W, "input feature has wrong size"
 
         shortcut = x
@@ -85,14 +86,12 @@ class SwinTransformerBlock(tf.keras.layers.Layer):
 
         # cyclic shift
         if self.shift_size > 0:
-            shifted_x = tf.roll(x, shift=[-self.shift_size, -self.shift_size], axis=(1, 2))
+            shifted_x = tf.roll(x, shift=[-self.shift_size, -self.shift_size], axis=(1, 2)) # 
         else:
             shifted_x = x
-
         # partition windows 
         x_windows = window_partition(shifted_x, self.window_size)
         x_windows = tf.reshape(x_windows, [-1, x_windows.shape[1], self.window_size * self.window_size, C]) 
-
         attn_windows = self.attn(x_windows, mask=self.attn_mask)
         attn_windows = tf.reshape(attn_windows, [-1, x_windows.shape[1], self.window_size, self.window_size, C])
         shifted_x = window_reverse(attn_windows, self.window_size, H, W)  # B H' W' C

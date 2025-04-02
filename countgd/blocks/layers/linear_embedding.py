@@ -5,12 +5,12 @@ class LinearEmbedding(tf.keras.layers.Layer):
     This layer is the same as the linear embedding layer as described in this paper: https://arxiv.org/pdf/2010.11929
     It takes the input of size ( B, N, (P*P*C) ) which is the output from the patch partition layer and turn into ( B, N, D ), where D is the embedding dim and N = (H*W)//(P*P) is the number of patches in an image
     '''
-    def __init__(self, num_patches, projection_dim):
+    def __init__(self, num_patches, embed_dim):
         super().__init__()
         self.num_patches = num_patches
-        self.projection_dim = projection_dim
-        self.projection = tf.keras.layers.Dense(projection_dim)
-        self.position_embedding = tf.keras.layers.Embedding(input_dim=num_patches, output_dim=projection_dim)
+        self.embed_dim = embed_dim
+        self.projection = tf.keras.layers.Dense(embed_dim)
+        self.position_embedding = tf.keras.layers.Embedding(input_dim=num_patches, output_dim=embed_dim)
 
     def call(self, patch):
         # patch embeddings
