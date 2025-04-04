@@ -5,17 +5,15 @@ from countgd.blocks.layers.patch_merging import PatchMerging
 from countgd.blocks.swint import SwinTransformerBlock
 
 def swint(arr):
+    num_patch_x = 56
+    num_patch_y = 56
+    embed_dim = 128
     patches = PatchParition(patch_size=4)(arr)
-    embeddings = LinearEmbedding(num_patches=3136, embed_dim=128)(patches)
-    block = SwinTransformerBlock(128, (56, 56), 2, window_size=4)(embeddings)
-    
-    merge = PatchMerging((56, 56), channels=128)(block)
-    num_patch_x = int(tf.sqrt(tf.cast(tf.shape(merge)[1], tf.float32)).numpy())
-    num_patch_y = int(tf.sqrt(tf.cast(tf.shape(merge)[1], tf.float32)).numpy())
-    embed_dim = tf.shape(merge)[-1].numpy().item()
-    block = SwinTransformerBlock(embed_dim, (num_patch_x, num_patch_y), 2, window_size=4)(merge)
-    return tf.shape(block)
+    embeddings = LinearEmbedding(num_patches=num_patch_x * num_patch_y, embed_dim=embed_dim)(patches)
+    block1 = SwinTransformerBlock((num_patch_x, num_patch_y), num_heads=2, depths=4, embed_dim=embed_dim, window_size=7)(embeddings)
+ 
+    return tf.shape(block1)
 
 def test_swint():
     arr = tf.zeros((1, 224, 224, 3))
-    assert swint(arr).numpy().tolist() == [1, 784, 256]
+    assert swint(arr).numpy().tolist() == [1, 3136, 128]

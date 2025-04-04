@@ -2,8 +2,9 @@ class SwintBConfig:
     INPUT_SHAPE = (224, 224, 3)
     PATCH_SIZE = 4
     EMBED_DIM = 128
-    NUM_HEADS=[2, 2, 18, 2]
-    WINDOW_SIZE = 4
+    NUM_HEADS = [4, 8, 16, 32]
+    WINDOW_SIZE = 7
+    DEPTHS = [2, 2, 18, 2]
     MLP_RATIO=4.
     QK_SCALE=None 
     QKV_BIAS=True

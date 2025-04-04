@@ -6,5 +6,5 @@ def window_rev(windows, window_size, H, W):
     return tf.shape(batch)
 
 def test_window_rev():
-    windows = tf.zeros((1, 1024, 7, 7, 3))
-    assert window_rev(windows, 7, 224, 224).numpy().tolist() == [1, 224, 224, 3]
+    windows = tf.zeros((64, 7, 7, 128))
+    assert window_rev(windows, 7, 56, 56).numpy().tolist() == [1, 56, 56, 128]

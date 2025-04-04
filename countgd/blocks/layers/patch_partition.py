@@ -9,10 +9,10 @@ class PatchParition(tf.keras.layers.Layer):
         super().__init__()
         self.patch_size = patch_size
 
-    def call(self, images):
-        batch_size = tf.shape(images)[0]
+    def call(self, x):
+        batch_size = tf.shape(x)[0]
         patches = tf.image.extract_patches(
-            images = images,
+            images = x,
             sizes = [1, self.patch_size, self.patch_size, 1],
             strides = [1, self.patch_size, self.patch_size, 1], # This parameter is used to control the overlapped between two consecutives patches
             rates = [1, 1, 1, 1], # This parameter determines which pixels are included in each patch

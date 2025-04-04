@@ -1,8 +1,9 @@
 import tensorflow as tf
 from countgd.blocks.layers.patch_partition import PatchParition
+from countgd.config import SwintBConfig
 
 def patch_partition(arr):
-    patch_part = PatchParition(patch_size=4)
+    patch_part = PatchParition(patch_size=SwintBConfig.PATCH_SIZE)
     return tf.shape(patch_part(arr))
 
 def test_patch_partition():

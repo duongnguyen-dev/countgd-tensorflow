@@ -20,8 +20,8 @@ class WindowAttention(tf.keras.layers.Layer):
         initializer = tf.keras.initializers.TruncatedNormal(
             mean = 0., stddev = .02
         )
-        table_shape = ((2 * self.window_size[0] - 1) * (2 * self.window_size[1] -1), num_heads) # (2*P-1, 2*P-1, nH)
-        self.relative_position_bias_table = tf.Variable(initializer(shape=table_shape)) # (2*P-1, 2*P-1, nH)
+        table_shape = ((2 * self.window_size[0] - 1) * (2 * self.window_size[1] -1), num_heads) # (2*Wh-1, 2*Ww-1, nH)
+        self.relative_position_bias_table = tf.Variable(initializer(shape=table_shape)) # (2*Wh-1, 2*Ww-1, nH)
 
         coords_h = tf.range(self.window_size[0]) # (Wh, )
         coords_w = tf.range(self.window_size[1]) # (Ww, )
@@ -41,16 +41,17 @@ class WindowAttention(tf.keras.layers.Layer):
         self.softmax = tf.keras.layers.Softmax(axis=-1)
 
     def call(self, x, mask=None):
-        _, L, N, C = x.shape
-        qkv = self.qkv(x) # (_, L, N, C, dim * 3)
+        L, N, C = x.shape # L = nW*B, N = window_size*window_size, D
+        qkv = self.qkv(x) # (L, N, dim * 3)
+        print(qkv.shape)
         qkv = tf.reshape(qkv, [-1, N, 3, self.num_heads, C // self.num_heads]) # (_, L, N, C, dim * 3) => (dim * 3, N, 3, nH, C // nH)
         qkv = tf.transpose(qkv, perm=[2, 0, 3, 1, 4]) # [3, dim*3, nH, N, C // nH]
         q, k, v = tf.unstack(qkv) # each has shape (dim * 3, nH, N, C // nH)
         q = q * self.scale
-        attn = tf.einsum('...ij,...kj->...ik', q, k) # This operator perform matrix multiplication 
-        relative_position_bias = tf.gather(self.relative_position_bias_table, tf.reshape(self.relative_position_index, [-1])) # ((2*P-1)**2 * nH)
-        relative_position_bias = tf.reshape(relative_position_bias, [self.window_size[0] * self.window_size[1], self.window_size[0] * self.window_size[1], -1]) # (P*P, P*P, nH)
-        relative_position_bias = tf.transpose(relative_position_bias, perm=[2, 0, 1]) # nH, P*P, P*P
+        attn = tf.einsum('...ij,...kj->...ik', q, k)
+        relative_position_bias = tf.gather(self.relative_position_bias_table, tf.reshape(self.relative_position_index, [-1])) # ((2*W-1)**2 * nH)
+        relative_position_bias = tf.reshape(relative_position_bias, [self.window_size[0] * self.window_size[1], self.window_size[0] * self.window_size[1], -1]) # (Wh*Ww, Wh*Ww, nH)
+        relative_position_bias = tf.transpose(relative_position_bias, perm=[2, 0, 1]) # nH, Wh*Ww, Wh*Ww
         attn = attn + relative_position_bias
 
         if mask is not None:
@@ -63,7 +64,7 @@ class WindowAttention(tf.keras.layers.Layer):
         
         attn = self.attn_drop(attn)
 
-        x = tf.reshape(tf.transpose(attn @ v, perm=[0, 2, 1, 3]), [-1, L, N, C])
+        x = tf.reshape(tf.transpose(attn @ v, perm=[0, 2, 1, 3]), [-1, N, C])
         x = self.proj(x)
         x = self.proj_drop(x)
         return x

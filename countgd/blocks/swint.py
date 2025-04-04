@@ -2,34 +2,37 @@ import tensorflow as tf
 import numpy as np
 from countgd.blocks.layers.w_mha import WindowAttention
 from countgd.blocks.layers.drop_path import DropPath
-from countgd.blocks.layers.linear_embedding import LinearEmbedding
-from countgd.blocks.layers.mlp import MLP
-from countgd.blocks.layers.patch_merging import PatchMerging
 from countgd.blocks.layers.patch_partition import PatchParition
+from countgd.blocks.layers.linear_embedding import LinearEmbedding
+from countgd.blocks.layers.patch_merging import PatchMerging
+from countgd.blocks.layers.w_mha import WindowAttention
+from countgd.blocks.layers.mlp import MLP
 from countgd.blocks.helpers import *
 
 class SwinTransformerBlock(tf.keras.layers.Layer):
     def __init__(
         self, 
-        dim, 
         input_resolution, 
         num_heads, 
-        window_size=4,
+        embed_dim=128,
+        window_size=7,
         shift_size=0,
         mlp_ratio=4.,
         qkv_bias=True,
         qk_scale=None,
-        proj_drop=0.,
-        attn_drop=0., 
-        drop_path=0.
+        drop_rate=0.,
+        attn_drop_rate=0., 
+        drop_path_rate=0.2
     ):
         super().__init__()
-        self.dim = dim
+        
         self.input_resolution = input_resolution
         self.num_heads = num_heads
+        self.embed_dim = embed_dim
         self.window_size = window_size
         self.shift_size = shift_size
         self.mlp_ratio = mlp_ratio
+
 
         if min(self.input_resolution) <= self.window_size:
             # if window size is larger than input resolution, we don't partition windows
@@ -39,16 +42,20 @@ class SwinTransformerBlock(tf.keras.layers.Layer):
         
         self.norm1 = tf.keras.layers.LayerNormalization(epsilon=1e-5)
         self.attn = WindowAttention(
-            dim, window_size=(self.window_size, self.window_size), num_heads=self.num_heads,
-            qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=proj_drop
+            embed_dim, 
+            window_size=(self.window_size, self.window_size), 
+            num_heads=self.num_heads,
+            qkv_bias=qkv_bias, 
+            qk_scale=qk_scale, 
+            attn_drop=attn_drop_rate, 
+            proj_drop=drop_rate
         )
 
-        self.drop_path = DropPath(drop_path) if drop_path > 0. else tf.identity
+        self.drop_path = DropPath(drop_path_rate) if drop_path_rate > 0. else tf.identity
         self.norm2 = tf.keras.layers.LayerNormalization(epsilon=1e-5)
-        mlp_hidden_dim = int(dim * mlp_ratio)
+        mlp_hidden_dim = int(embed_dim * mlp_ratio)
+        self.mlp = MLP(mlp_hidden_dim, embed_dim, dropout_rate=drop_rate)
 
-        self.mlp = MLP(mlp_hidden_dim, dim, dropout_rate=proj_drop)
-        
         if self.shift_size > 0:
             # Calculate attention mask for SW-MSA
             H, W = self.input_resolution
@@ -67,7 +74,6 @@ class SwinTransformerBlock(tf.keras.layers.Layer):
                     cnt += 1
             
             img_mask = tf.constant(img_mask)
-            print(img_mask.shape)
             mask_windows = window_partition(img_mask, self.window_size)
             mask_windows = tf.reshape(mask_windows, [-1, self.window_size*self.window_size])
             attn_mask = mask_windows[:, None, :] - mask_windows[:, :, None]
@@ -76,35 +82,61 @@ class SwinTransformerBlock(tf.keras.layers.Layer):
             self.attn_mask = None
     
     def call(self, x):
-        H, W = self.input_resolution # 56 x 56
-        B, L, C = x.shape # Linear embedding output shape
-        assert L == H * W, "input feature has wrong size"
+        """Forward function.
+        Args:
+            x: Input feature, tensor size (B, N, embed_dim).
+            H, W: Spatial resolution of the input feature.
+            mask_matrix: Attention mask for cyclic shift.
+        """
+        B, N, D = x.shape
+        H, W = self.input_resolution
+        assert N == H * W, "input feature has wrong size"
 
         shortcut = x
         x = self.norm1(x)
-        x = tf.reshape(x, [-1, H, W, C])
+        x = tf.reshape(x, [-1, H, W, D]) # B x H x W x C
+
+        # Pad feature maps to multiples window size
+        pad_b = (self.window_size - H%self.window_size)%self.window_size
+        pad_r = (self.window_size - W%self.window_size)%self.window_size
+        paddings = tf.constant([
+            [0, 0], 
+            [0, pad_b],
+            [0, pad_r],
+            [0, 0]
+        ])
+
+        x = tf.pad(x, paddings)
+        _, Hp, Wp, _ = x.shape
 
         # cyclic shift
         if self.shift_size > 0:
-            shifted_x = tf.roll(x, shift=[-self.shift_size, -self.shift_size], axis=(1, 2)) # 
+            shifted_x = tf.roll(x, shift=[-self.shift_size, -self.shift_size], axis=(1, 2))
+            attn_mask = self.attn_mask
         else:
             shifted_x = x
-        # partition windows 
-        x_windows = window_partition(shifted_x, self.window_size)
-        x_windows = tf.reshape(x_windows, [-1, x_windows.shape[1], self.window_size * self.window_size, C]) 
-        attn_windows = self.attn(x_windows, mask=self.attn_mask)
-        attn_windows = tf.reshape(attn_windows, [-1, x_windows.shape[1], self.window_size, self.window_size, C])
-        shifted_x = window_reverse(attn_windows, self.window_size, H, W)  # B H' W' C
+            attn_mask = None
+
+        # partition windows
+        x_windows = window_partition(shifted_x, self.window_size) # nW*B, window_size, window_size, D
+        x_windows = tf.reshape(x_windows, [-1, self.window_size * self.window_size, D])  # nW*B, window_size*window_size, D
+        # W-MSA/SW-MSA
+        attn_windows = self.attn(x_windows, mask=attn_mask) # nW*B, window_size*window_size, D
+
+        # Merge windows
+        attn_windows = tf.reshape(attn_windows, [-1, self.window_size, self.window_size, D])
+        shifted_x = window_reverse(attn_windows, self.window_size, Hp, Wp)  # B H' W' C
 
         # reverse cyclic shift
         if self.shift_size > 0:
             x = tf.roll(shifted_x, shift=[self.shift_size, self.shift_size], axis=(1, 2))
         else:
             x = shifted_x
-        x = tf.reshape(x, [-1, H * W, C])
+        x = tf.reshape(x, [-1, H * W, D])
 
         # FFN
         x = shortcut + self.drop_path(x)
         x = x + self.drop_path(self.mlp(self.norm2(x)))
 
         return x
+        
