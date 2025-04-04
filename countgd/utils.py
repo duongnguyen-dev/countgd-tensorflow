@@ -111,7 +111,7 @@ def create_swintransformerB(
             attn_drop_rate=attn_drop,
             drop_path_rate=drop_path
         )(out_stage_4)
-
+    
     model = tf.keras.Model(inputs=inputs, outputs=(out_stage_2, out_stage_3, out_stage_4))
 
     return model
