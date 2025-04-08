@@ -10,7 +10,7 @@ def swint(arr):
     embed_dim = 128
     patches = PatchParition(patch_size=4)(arr)
     embeddings = LinearEmbedding(num_patches=num_patch_x * num_patch_y, embed_dim=embed_dim)(patches)
-    block1 = SwinTransformerBlock((num_patch_x, num_patch_y), num_heads=2, depths=4, embed_dim=embed_dim, window_size=7)(embeddings)
+    block1 = SwinTransformerBlock((num_patch_x, num_patch_y), num_heads=2, embed_dim=embed_dim, window_size=7)(embeddings)
  
     return tf.shape(block1)
 

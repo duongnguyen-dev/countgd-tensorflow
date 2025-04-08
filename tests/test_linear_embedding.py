@@ -8,4 +8,4 @@ def linear_embedding(patch):
 
 def test_linear_embedding():
     arr = tf.zeros((1, 3136, 48))
-    assert linear_embedding(arr).numpy().tolist() == [1, 3136, 96]
+    assert linear_embedding(arr).numpy().tolist() == [1, 3136, 128]

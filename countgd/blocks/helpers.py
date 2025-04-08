@@ -20,7 +20,10 @@ def window_reverse(windows, window_size, H, W):
     This function helps to reverse the partition step and return the input image
     '''
     C = windows.shape[-1]
-    B = int(windows.shape[1] / (H * W / window_size / window_size))
+    B = int(windows.shape[0] / (H * W / window_size / window_size)) if windows.shape[0] != None else 1
     x = tf.reshape(windows, [B, H//window_size, W//window_size, window_size, window_size, C])
     x = tf.reshape(tf.transpose(x, perm=[0, 1, 3, 2, 4, 5]), [-1, H, W, C])
     return x
+
+def log2_graph(x):
+    return tf.math.log(x) / tf.math.log(2.0)
