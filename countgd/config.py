@@ -13,7 +13,9 @@ class SwintBConfig:
     DROP_PATH=0.
 
 class BertConfig:
-    pass
+    BERT_PREPROCESSOR="https://kaggle.com/models/tensorflow/bert/TensorFlow2/en-uncased-preprocess/3"
+    BERT_MODEL="https://www.kaggle.com/models/tensorflow/bert/TensorFlow2/bert-en-uncased-l-12-h-768-a-12/2"
+    SEQUENCE_LENGTH=1
 
 class CountGDConfig: 
     H=224

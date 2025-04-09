@@ -22,17 +22,16 @@ class UpScaleLayer(tf.keras.layers.Layer):
         out_stage_4 = tf.reshape(out_stage_4, [-1, int(math.sqrt(L4)), int(math.sqrt(L4)), C4])
         out_stage_4 = tf.keras.layers.UpSampling2D(
             size = (4, 4),
-            interpolation="nearest"
+            interpolation="bilinear"
         )(out_stage_4)
 
         out_stage_3 = tf.reshape(out_stage_3, [-1, int(math.sqrt(L3)), int(math.sqrt(L3)), C3])
         out_stage_3 = tf.keras.layers.UpSampling2D(
             size = (2, 2),
-            interpolation="nearest"
+            interpolation="bilinear"
         )(out_stage_3)
 
         out_stage_2 = tf.reshape(out_stage_2, [-1, int(math.sqrt(L2)), int(math.sqrt(L2)), C2])
-        print(out_stage_2.shape, out_stage_3.shape, out_stage_4.shape)
         concat = tf.keras.layers.Concatenate(axis=-1)([out_stage_2, out_stage_3, out_stage_4])
         proj = tf.keras.layers.Dense(256)(concat)
 
